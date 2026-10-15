@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { expect, it, vi } from "vitest";
 import type { ConfigFileSnapshot } from "../../config/types.openclaw.js";
 import { recordUpdateModelRetirement } from "../../infra/update-deferred-model-retirement.js";
@@ -184,6 +186,3 @@ export function registerConvergenceCompletionTests({
     expect(messages.filter((msg) => msg === unrelatedWarning)).toHaveLength(1);
   });
 }
-import fs from "node:fs/promises";
-import path from "node:path";
-
