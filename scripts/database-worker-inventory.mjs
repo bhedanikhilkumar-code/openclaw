@@ -3461,7 +3461,7 @@ export function inventory(root = defaultRoot, ref = "", staged = false) {
   const roots = ["src", "extensions", "packages", "scripts"];
   const pattern = new RegExp([...primitives.keys()].join("|"));
   const snapshot = ref !== "" || staged;
-  const result = spawnSync(
+  let result = spawnSync(
     snapshot ? "git" : "rg",
     snapshot
       ? ref
@@ -3476,6 +3476,13 @@ export function inventory(root = defaultRoot, ref = "", staged = false) {
         ],
     { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
   );
+  if (!snapshot && result.error && /** @type {NodeJS.ErrnoException} */ (result.error).code === "ENOENT") {
+    result = spawnSync(
+      "git",
+      ["ls-files", "-z", "-c", "-o", "--exclude-standard", "--", ...roots],
+      { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    );
+  }
   if (result.error || (result.status !== 0 && result.status !== 1)) {
     throw result.error ?? new Error(result.stderr || "SQLite inventory source scan failed");
   }
