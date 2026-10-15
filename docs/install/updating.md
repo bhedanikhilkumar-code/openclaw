@@ -228,15 +228,37 @@ not started by the Gateway service, under the installation's owning account:
 openclaw gateway stop && openclaw update --yes && openclaw gateway start
 ```
 
-Stopping the Gateway removes the live containment ambiguity. Keep the same account,
-profile, and state/configuration paths throughout, and repeat any requested `--channel`
+**macOS 12 Monterey recovery:** an older installed updater may also refuse
+`openclaw gateway stop` with `service-membership-unverified`, because Monterey
+can deny `launchctl print pid/<pid>`. In that case, the stop/update/start sequence
+above cannot get past its first command. From the same independent terminal and
+the account that owns the LaunchAgent, unload the Gateway LaunchAgent, update the
+package, and start it again:
+
+```sh
+launchctl bootout gui/$(id -u)/<launch-agent-label>
+openclaw update --yes
+openclaw gateway start
+```
+
+Replace `<launch-agent-label>` with the exact label of this installation's
+OpenClaw LaunchAgent (the default profile uses `ai.openclaw.gateway`). Only use
+this recovery when the installed service is a user LaunchAgent and you have
+verified its label; do not substitute a system LaunchDaemon or another profile's
+label. Unloading the LaunchAgent stops the Gateway. If the update fails, follow
+its recovery guidance before starting the Gateway. This is a one-time bridge for
+the older updater; after the package is replaced by a release containing the
+native coalition fallback, normal service commands can perform the membership
+check.
+
+For other macOS versions and platforms, use the normal sequence above. Keep the same
+account, profile, and state/configuration paths throughout, and repeat any requested `--channel`
 or `--tag` on the update command. If the update reports an error,
 follow its recovery guidance before starting the Gateway. With native helper support,
 `openclaw gateway call update.run --params '{}'`, the Gateway tool's `update.run`
 action, and `/update` can instead perform a managed handoff. Linux transient user
 handoffs require `systemd-run`; an emulated manager without it cannot use that route.
 See [Automation and SSH](/cli/update#automation-and-ssh).
-
 Managed-service refusals retain a specific code, such as
 `inside-gateway-process-tree` or `service-definition-changed`, in the failure
 report and `openclaw update status --json`. Shared reports preserve that code and
