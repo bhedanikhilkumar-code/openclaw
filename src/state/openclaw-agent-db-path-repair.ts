@@ -61,12 +61,6 @@ export function hasRepairableOpenClawAgentDatabasePaths(
     ) {
       return true;
     }
-    const obsolete = aliases
-      .map((alias) => alias.path)
-      .filter((alias) => alias !== stored);
-    if (obsolete.length > 0) {
-      return true;
-    }
   }
   return false;
 }

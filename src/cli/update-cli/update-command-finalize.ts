@@ -1,6 +1,7 @@
 import { theme } from "../../../packages/terminal-core/src/theme.js";
 import {
   assertConfigWriteAllowedInCurrentMode,
+  type OpenClawConfig,
   readConfigFileSnapshot,
 } from "../../config/config.js";
 import { retainCurrentDeferredPluginMigrationWarnings } from "../../infra/deferred-plugin-migration-warnings.js";
