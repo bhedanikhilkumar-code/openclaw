@@ -228,16 +228,15 @@ not started by the Gateway service, under the installation's owning account:
 openclaw gateway stop && openclaw update --yes && openclaw gateway start
 ```
 
-Stopping the Gateway removes the live containment ambiguity. Keep the same account, profile, and state/configuration paths throughout, and repeat any requested `--channel` or `--tag` on the update command. If the update reports an error, follow its recovery guidance before starting the Gateway. With native helper support, `openclaw gateway call update.run --params '{}'`, the Gateway tool's `update.run` action, and `/update` can instead perform a managed handoff. Linux transient user handoffs require `systemd-run`; an emulated manager without it cannot use that route. See [Automation and SSH](/cli/update#automation-and-ssh).
-
-For other macOS versions and platforms, use the normal sequence above. Keep the same
-account, profile, and state/configuration paths throughout, and repeat any requested `--channel`
+Stopping the Gateway removes the live containment ambiguity. Keep the same account,
+profile, and state/configuration paths throughout, and repeat any requested `--channel`
 or `--tag` on the update command. If the update reports an error,
 follow its recovery guidance before starting the Gateway. With native helper support,
 `openclaw gateway call update.run --params '{}'`, the Gateway tool's `update.run`
 action, and `/update` can instead perform a managed handoff. Linux transient user
 handoffs require `systemd-run`; an emulated manager without it cannot use that route.
 See [Automation and SSH](/cli/update#automation-and-ssh).
+
 Managed-service refusals retain a specific code, such as
 `inside-gateway-process-tree` or `service-definition-changed`, in the failure
 report and `openclaw update status --json`. Shared reports preserve that code and
