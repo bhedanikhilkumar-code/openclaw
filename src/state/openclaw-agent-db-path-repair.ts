@@ -16,6 +16,61 @@ import {
   resolveOpenClawRegisteredAgentDatabasePath,
 } from "./openclaw-state-db.paths.js";
 
+export function hasRepairableOpenClawAgentDatabasePaths(
+  database: Pick<OpenClawStateDatabase, "db" | "path">,
+): boolean {
+  const { db, path: pathname } = database;
+  assertOpenClawStateDatabaseForMaintenance(db, { pathname });
+  const queries = getNodeSqliteKysely<Pick<DB, "agent_databases">>(db);
+  const rows = executeSqliteQuerySync(
+    db,
+    queries
+      .selectFrom("agent_databases")
+      .selectAll()
+      .orderBy("last_seen_at", "desc")
+      .orderBy("path"),
+  ).rows;
+  if (!rows.length) {
+    return false;
+  }
+  const agents = new Map<string, { stored: string; aliases: AgentDatabases[] }>();
+  for (const row of rows) {
+    const stored = resolveOpenClawAgentDatabaseStoredPath(
+      pathname,
+      resolveOpenClawRegisteredAgentDatabasePath(pathname, row.path),
+    );
+    const key = `${row.agent_id}\0${stored}`;
+    const group = agents.get(key) ?? { stored, aliases: [] };
+    group.aliases.push(row);
+    agents.set(key, group);
+  }
+
+  for (const { stored, aliases } of agents.values()) {
+    const newest = aliases[0]!;
+    const registeredPath = resolveOpenClawRegisteredAgentDatabasePath(pathname, newest.path);
+    const name = path.basename(registeredPath).replace(/\.\d+(?=\.sqlite$)/, "");
+    const sentinel =
+      name === "(multiple).sqlite" || name === `(multiple).${newest.agent_id}.sqlite`;
+    if (sentinel) {
+      return true;
+    }
+    if (
+      process.platform === "win32" &&
+      !path.isAbsolute(stored) &&
+      aliases.some((row) => row.path.startsWith("\\\\?\\"))
+    ) {
+      return true;
+    }
+    const obsolete = aliases
+      .map((alias) => alias.path)
+      .filter((alias) => alias !== stored);
+    if (obsolete.length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** The caller retains shared-state write admission through this synchronous repair. */
 export function repairOpenClawAgentDatabasePaths(
   database: Pick<OpenClawStateDatabase, "db" | "path">,
@@ -27,6 +82,9 @@ export function repairOpenClawAgentDatabasePaths(
   assertOpenClawStateDatabaseForMaintenance(db, { pathname });
   const active = readActiveUpdateRun(db);
   if (active) {
+    if (!hasRepairableOpenClawAgentDatabasePaths(database)) {
+      return { repaired: 0, warnings: [] };
+    }
     return {
       repaired: 0,
       warnings: [

@@ -1,5 +1,8 @@
 import { note } from "../../packages/terminal-core/src/note.js";
-import { repairOpenClawAgentDatabasePaths } from "../state/openclaw-agent-db-path-repair.js";
+import {
+  hasRepairableOpenClawAgentDatabasePaths,
+  repairOpenClawAgentDatabasePaths,
+} from "../state/openclaw-agent-db-path-repair.js";
 import { invalidateRegisteredAgentDatabasesMemo } from "../state/openclaw-agent-db-registry-listing.js";
 import { runOpenClawStateWriteTransaction } from "../state/openclaw-state-db.js";
 import { isUpdateDoctorLintPass } from "./doctor/shared/update-phase.js";
@@ -15,12 +18,14 @@ export function noteDoctorAgentDatabasePathHealth(params: {
   const report = runOpenClawStateWriteTransaction(
     (database) =>
       isUpdateDoctorLintPass(params.env)
-        ? {
-            repaired: 0,
-            warnings: [
-              "Skipped agent database path repair during update Doctor. Run openclaw doctor --fix after the update finishes.",
-            ],
-          }
+        ? hasRepairableOpenClawAgentDatabasePaths(database)
+          ? {
+              repaired: 0,
+              warnings: [
+                "Skipped agent database path repair during update Doctor. Run openclaw doctor --fix after the update finishes.",
+              ],
+            }
+          : { repaired: 0, warnings: [] }
         : repairOpenClawAgentDatabasePaths(database),
     { env: params.env },
     { operationLabel: "doctor.agent-database-paths" },
