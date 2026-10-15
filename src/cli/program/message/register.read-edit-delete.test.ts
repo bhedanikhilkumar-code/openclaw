@@ -67,6 +67,11 @@ describe("message read legacy option visibility", () => {
     const help = read!.helpInformation();
     expect(help).toContain("--around <id>");
     expect(help).toContain("--thread-id <id>");
+    expect(help).toContain("--before <id>");
+    expect(help).toContain("pagination cursor");
+    expect(help).toContain("prevBatch/nextBatch");
+    expect(help).toContain("--after <id>");
+    expect(help).toContain("nextBatch/prevBatch");
     expect(help).not.toContain("--include-thread");
   });
 

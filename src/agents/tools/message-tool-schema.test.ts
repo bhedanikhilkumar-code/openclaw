@@ -54,4 +54,12 @@ describe("message schema variants", () => {
     expect(Value.Check(next, { action: "poll" })).toBe(true);
     expect(next.properties).toHaveProperty("pollOptionId");
   });
+
+  it("describes cursor semantics on read before and after options", () => {
+    const schema = buildMessageToolSchemaFromActions(["read"], options);
+    const beforeProp = (schema.properties as Record<string, { description?: string }>).before;
+    const afterProp = (schema.properties as Record<string, { description?: string }>).after;
+    expect(beforeProp?.description).toContain("Matrix prevBatch");
+    expect(afterProp?.description).toContain("Matrix nextBatch");
+  });
 });

@@ -738,4 +738,61 @@ describe("matrix message actions", () => {
     expect(result.messages.map((message) => message.eventId)).toEqual(["$thread-reply"]);
     expect(result.nextBatch).toBeNull();
   });
+
+  it("fails with actionable pagination guidance when passing an event id as a cursor in thread relations", async () => {
+    const { client, getRelations } = createMessagesClient({ chunk: [] });
+    getRelations.mockRejectedValueOnce(
+      Object.assign(new Error("MatrixError: [400] 'from' parameter is invalid"), {
+        httpStatus: 400,
+        data: { errcode: "M_INVALID_PARAM", error: "'from' parameter is invalid" },
+      }),
+    );
+
+    await expect(
+      readMatrixMessages("room:!room:example.org", {
+        client,
+        threadId: "$thread-root",
+        after: "$eventId",
+      }),
+    ).rejects.toThrow(
+      "Matrix message read failed for pagination token \"$eventId\": Matrix before/after parameters require a pagination cursor returned from a previous read (such as nextBatch or prevBatch), not a message event ID. MatrixError: [400] 'from' parameter is invalid",
+    );
+  });
+
+  it("fails with actionable pagination guidance when passing an invalid cursor in flat room history", async () => {
+    const { client, doRequest } = createMessagesClient({ chunk: [] });
+    doRequest.mockRejectedValueOnce(
+      Object.assign(new Error("MatrixError: [400] 'from' parameter is invalid"), {
+        statusCode: 400,
+        body: { errcode: "M_INVALID_PARAM", error: "'from' parameter is invalid" },
+      }),
+    );
+
+    await expect(
+      readMatrixMessages("room:!room:example.org", {
+        client,
+        before: "invalid-token",
+      }),
+    ).rejects.toThrow(
+      "Matrix message read failed for pagination token \"invalid-token\": Matrix before/after parameters require a pagination cursor returned from a previous read (such as nextBatch or prevBatch), not a message event ID. MatrixError: [400] 'from' parameter is invalid",
+    );
+  });
+
+  it("preserves unrelated homeserver errors without pagination cursor guidance", async () => {
+    const { client, getRelations } = createMessagesClient({ chunk: [] });
+    getRelations.mockRejectedValueOnce(
+      Object.assign(new Error("MatrixError: [404] Room not found"), {
+        httpStatus: 404,
+        data: { errcode: "M_NOT_FOUND", error: "Room not found" },
+      }),
+    );
+
+    await expect(
+      readMatrixMessages("room:!room:example.org", {
+        client,
+        threadId: "$thread-root",
+        after: "$eventId",
+      }),
+    ).rejects.toThrow("MatrixError: [404] Room not found");
+  });
 });

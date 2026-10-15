@@ -1,5 +1,7 @@
 import type { Direction } from "matrix-js-sdk/lib/models/event-timeline.js";
+import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import { normalizeOptionalString } from "openclaw/plugin-sdk/string-coerce-runtime";
+import { isMatrixInvalidPaginationTokenError } from "../errors.js";
 import { resolveMatrixReplacementContent } from "../media-text.js";
 import { fetchMatrixPollMessageSummary, resolveMatrixPollRootEventId } from "../poll-summary.js";
 import { isPollEventType, isPollStartType } from "../poll-types.js";
@@ -145,25 +147,33 @@ export async function readMatrixMessages(
     }
     const relationPage =
       threadId && relationLimit > 0
-        ? await client.getRelations(resolvedRoom, threadId, "m.thread", undefined, {
-            dir: dir as Direction,
-            from: token,
-            limit: relationLimit,
-          })
+        ? await client
+            .getRelations(resolvedRoom, threadId, "m.thread", undefined, {
+              dir: dir as Direction,
+              from: token,
+              limit: relationLimit,
+            })
+            .catch((err) => handleMatrixPaginationError(err, token))
         : null;
     // Flat room history uses the low-level endpoint for compatibility; threaded reads use
     // the SDK relations helper so encrypted rooms get the SDK's event-type translation.
     const flatPage = threadId
       ? null
-      : ((await client.doRequest(
-          "GET",
-          `/_matrix/client/v3/rooms/${encodeURIComponent(resolvedRoom)}/messages`,
-          {
-            dir,
-            limit,
-            from: token,
-          },
-        )) as { chunk: MatrixRawEvent[]; start?: string; end?: string });
+      : (((await client
+          .doRequest(
+            "GET",
+            `/_matrix/client/v3/rooms/${encodeURIComponent(resolvedRoom)}/messages`,
+            {
+              dir,
+              limit,
+              from: token,
+            },
+          )
+          .catch((err) => handleMatrixPaginationError(err, token))) as {
+          chunk: MatrixRawEvent[];
+          start?: string;
+          end?: string;
+        }) ?? null);
     const hydratedChunk = await client.hydrateEvents(
       resolvedRoom,
       relationPage ? (rootFillsThreadPage ? [] : relationPage.events) : (flatPage?.chunk ?? []),
@@ -253,6 +263,17 @@ export async function readMatrixMessages(
       prevBatch: relationPage?.prevBatch ?? flatPage?.start ?? null,
     };
   });
+}
+
+function handleMatrixPaginationError(err: unknown, token?: string): never {
+  if (token && isMatrixInvalidPaginationTokenError(err, token)) {
+    const rawReason = formatErrorMessage(err);
+    throw new Error(
+      `Matrix message read failed for pagination token "${token}": Matrix before/after parameters require a pagination cursor returned from a previous read (such as nextBatch or prevBatch), not a message event ID. ${rawReason}`,
+      { cause: err },
+    );
+  }
+  throw err;
 }
 
 function encodeMatrixThreadRelationsStartCursor(threadId: string): string {

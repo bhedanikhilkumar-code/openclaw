@@ -312,8 +312,12 @@ const MESSAGE_SCHEMA_GROUPS: ReadonlyArray<{
       limit: optionalPositiveIntegerSchema({ description: "Maximum number of results to return." }),
       pageSize: optionalPositiveIntegerSchema(),
       pageToken: optionalStringSchema(),
-      before: optionalStringSchema(),
-      after: optionalStringSchema(),
+      before: optionalStringSchema(
+        "Read or search messages before this message ID, timestamp, or channel-specific pagination cursor (such as Matrix prevBatch).",
+      ),
+      after: optionalStringSchema(
+        "Read or search messages after this message ID, timestamp, or channel-specific pagination cursor (such as Matrix nextBatch).",
+      ),
       around: optionalStringSchema(),
       fromMe: optionalBooleanSchema(),
       includeArchived: optionalBooleanSchema(),
