@@ -151,9 +151,11 @@ export function collectUpdateDoctorFailureFacts(error: unknown): UpdateFailureFa
 /** Keep optional health diagnostics bounded across Doctor and its update parent. */
 export function normalizeUpdatePostInstallDoctorWarnings(warnings: readonly string[]): string[] {
   const normalized: string[] = [];
+  const seen = new Set<string>();
   for (const warning of warnings) {
     const message = truncateUtf16Safe(warning.trim(), 500);
-    if (message) {
+    if (message && !seen.has(message)) {
+      seen.add(message);
       normalized.push(message);
       if (normalized.length === 32) {
         break;

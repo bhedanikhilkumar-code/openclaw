@@ -101,4 +101,18 @@ describe("Doctor agent database path repair", () => {
     expect(f.registeredPaths()).toEqual(before);
     expect(fs.existsSync(pathname)).toBe(true);
   });
+
+  it("omits path repair warnings when inventory is clean during update Doctor", () => {
+    const f = fixture();
+    f.register("ordinary.sqlite");
+    const run = createUpdateRun({ trigger: "cli" }, { env: f.env });
+    expect(noteDoctorAgentDatabasePathHealth({ env: f.env, shouldRepair: true })).toEqual([]);
+    finishUpdateRun(run.runId, { status: "succeeded" }, { env: f.env });
+    expect(
+      noteDoctorAgentDatabasePathHealth({
+        env: { ...f.env, OPENCLAW_UPDATE_PARENT_SUPPORTS_DOCTOR_CONFIG_WRITE: "1" },
+        shouldRepair: true,
+      }),
+    ).toEqual([]);
+  });
 });
