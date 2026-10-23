@@ -7,6 +7,10 @@ import { recordWorkerMessage } from "../infra/worker-message-metrics.js";
 import { getAgentDeletionDatabaseCleanup } from "./agent-deletion-cleanup.js";
 import type { OpenClawAgentDatabaseOptions } from "./openclaw-agent-db-contract.js";
 
+export function finishAdmissionWhenSettled(settled: Promise<unknown>, finish: () => void): void {
+  void settled.then(finish, finish);
+}
+
 /** Bind the request's cleanup owner, including accepted native work, before transferring a grant. */
 export function captureAgentDeletionCleanupAdmission(
   options: OpenClawAgentDatabaseOptions,
@@ -44,7 +48,7 @@ export function captureAgentDeletionCleanupAdmission(
         try {
           facts.port.postMessage(leased.admission.port, [leased.admission.port]);
           recordWorkerMessage("admission", "to_worker");
-          void operation.settled.then(() => leased.admission.finish());
+          finishAdmissionWhenSettled(operation.settled, () => leased.admission.finish());
         } catch (error) {
           leased.admission.finish();
           throw error;
